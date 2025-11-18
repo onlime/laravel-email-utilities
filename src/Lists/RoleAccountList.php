@@ -9,15 +9,25 @@ use Illuminate\Support\Facades\File;
 
 class RoleAccountList
 {
+    use HasStorageDisk;
+
+    public static function getListPath(): string
+    {
+        $relPath = config('email-utilities.role_accounts_list_path');
+
+        return $relPath
+            ? self::disk()->path($relPath)
+            : __DIR__.'/../../lists/role-accounts.json';
+    }
+
     /**
      * @return list<string>
      * @throws FileNotFoundException
      */
     public static function get(): array
     {
-        /** @var string $listLocation */
-        $listLocation = config('email-utilities.role_accounts_list_path') ?: __DIR__.'/../../lists/role-accounts.json';
-
-        return array_values(File::json($listLocation));
+        return array_values(File::json(
+            self::getListPath()
+        ));
     }
 }

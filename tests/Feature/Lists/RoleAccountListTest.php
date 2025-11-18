@@ -7,7 +7,7 @@ namespace AshAllenDesign\EmailUtilities\Tests\Feature\Lists;
 use AshAllenDesign\EmailUtilities\Lists\RoleAccountList;
 use AshAllenDesign\EmailUtilities\Tests\Feature\TestCase;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
 use TypeError;
 
@@ -24,9 +24,15 @@ class RoleAccountListTest extends TestCase
     #[Test]
     public function custom_disposable_domains_are_loaded_correctly(): void
     {
-        File::put('./tests/Feature/Lists/role-accounts-list-test.json', json_encode(['admin', 'support']));
+        Storage::fake(config('email-utilities.storage_disk'));
 
-        config(['email-utilities.role_accounts_list_path' => './tests/Feature/Lists/role-accounts-list-test.json']);
+        $path = 'lists/role-accounts-list-test.json';
+        RoleAccountList::disk()->put(
+            $path,
+            json_encode(['admin', 'support'])
+        );
+
+        config(['email-utilities.role_accounts_list_path' => $path]);
 
         $this->assertCount(2, RoleAccountList::get());
     }
@@ -34,9 +40,11 @@ class RoleAccountListTest extends TestCase
     #[Test]
     public function exception_is_thrown_if_the_custom_list_does_not_exist(): void
     {
+        Storage::fake(config('email-utilities.storage_disk'));
+
         $this->expectException(FileNotFoundException::class);
 
-        config(['email-utilities.role_accounts_list_path' => './invalid-path.json']);
+        config(['email-utilities.role_accounts_list_path' => 'invalid-path.json']);
 
         RoleAccountList::get();
     }
@@ -44,19 +52,15 @@ class RoleAccountListTest extends TestCase
     #[Test]
     public function exception_is_thrown_if_the_list_is_not_valid_json(): void
     {
+        Storage::fake(config('email-utilities.storage_disk'));
+
         $this->expectException(TypeError::class);
 
-        File::put('./tests/Feature/Lists/role-accounts-list-test.json', 'NOT VALID JSON');
+        $path = 'lists/role-accounts-list-test.json';
+        RoleAccountList::disk()->put($path, 'NOT VALID JSON');
 
-        config(['email-utilities.role_accounts_list_path' => './tests/Feature/Lists/role-accounts-list-test.json']);
+        config(['email-utilities.role_accounts_list_path' => $path]);
 
         RoleAccountList::get();
-    }
-
-    protected function tearDown(): void
-    {
-        File::delete('./tests/Feature/Lists/role-accounts-list-test.json');
-
-        parent::tearDown();
     }
 }
