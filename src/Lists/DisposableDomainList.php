@@ -9,10 +9,15 @@ use Illuminate\Support\Facades\File;
 
 class DisposableDomainList
 {
+    use HasStorageDisk;
+
     public static function getListPath(): string
     {
-        return config('email-utilities.disposable_email_list_path')
-            ?: __DIR__.'/../../lists/disposable-domains.txt';
+        $relPath = config('email-utilities.disposable_email_list_path');
+
+        return $relPath
+            ? self::disk()->path($relPath)
+            : __DIR__.'/../../lists/disposable-domains.txt';
     }
 
     /**

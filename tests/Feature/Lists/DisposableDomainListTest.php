@@ -7,9 +7,8 @@ namespace AshAllenDesign\EmailUtilities\Tests\Feature\Lists;
 use AshAllenDesign\EmailUtilities\Lists\DisposableDomainList;
 use AshAllenDesign\EmailUtilities\Tests\Feature\TestCase;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
-use TypeError;
 
 class DisposableDomainListTest extends TestCase
 {
@@ -24,12 +23,16 @@ class DisposableDomainListTest extends TestCase
     #[Test]
     public function custom_disposable_domains_are_loaded_correctly(): void
     {
-        File::put(
-            './tests/Feature/Lists/disposable-domains-test.txt',
+        Storage::fake(config('email-utilities.storage_disk'));
+
+        $path = 'lists/disposable-domains-test.txt';
+
+        DisposableDomainList::disk()->put(
+            $path,
             implode(PHP_EOL, ['customdomain.com', 'hellodomain.com'])
         );
 
-        config(['email-utilities.disposable_email_list_path' => './tests/Feature/Lists/disposable-domains-test.txt']);
+        config(['email-utilities.disposable_email_list_path' => $path]);
 
         $this->assertCount(2, DisposableDomainList::get());
     }
@@ -39,15 +42,8 @@ class DisposableDomainListTest extends TestCase
     {
         $this->expectException(FileNotFoundException::class);
 
-        config(['email-utilities.disposable_email_list_path' => './invalid-path.txt']);
+        config(['email-utilities.disposable_email_list_path' => 'invalid-path.txt']);
 
         DisposableDomainList::get();
-    }
-
-    protected function tearDown(): void
-    {
-        File::delete('./tests/Feature/Lists/disposable-domains-test.txt');
-
-        parent::tearDown();
     }
 }

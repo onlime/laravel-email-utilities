@@ -4,7 +4,6 @@ namespace AshAllenDesign\EmailUtilities\Commands;
 
 use AshAllenDesign\EmailUtilities\Lists\DisposableDomainList;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Number;
@@ -22,14 +21,13 @@ class FetchDisposableEmailDomains extends Command
 
     public function handle(): int
     {
+        $path = config('email-utilities.disposable_email_list_path');
+
         // Ensure config is set so we don't overwrite the vendor list
-        if (blank(config('email-utilities.disposable_email_list_path'))) {
+        if (blank($path)) {
             $this->error("The configuration 'email-utilities.disposable_email_list_path' is not set. Please set it to a valid file path.");
             return self::FAILURE;
         }
-
-        // Absolute file path (string), e.g. storage/app/disposable-domains.txt
-        $listPath = DisposableDomainList::getListPath();
 
         $response = Http::get(self::BLOCKLIST_URL);
 
@@ -50,15 +48,15 @@ class FetchDisposableEmailDomains extends Command
         }
 
         // Store the fetched contents
-        File::put($listPath, $body);
+        $disk = DisposableDomainList::disk();
+        $disk->put($path, $body);
 
-        $fileSize = File::size($listPath);
-
-        Log::info("Disposable domain blocklist updated: $listPath", [
+        Log::info("Disposable domain blocklist updated: ".DisposableDomainList::getListPath(), [
             'domain_count' => $lineCount,
-            'file_size'    => $fileSize,
+            'file_size'    => $fileSize = $disk->size($path),
             'file_size_h'  => Number::fileSize($fileSize),
         ]);
+
         $this->info('Blocklist successfully fetched and stored. Domain count: '.$lineCount);
 
         return self::SUCCESS;
